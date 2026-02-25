@@ -19,6 +19,9 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.part_number})"
+    @property
+    def total_stock(self):
+        return sum(s.quantity for s in self.stock_set.all())
     
 class Sale(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -28,3 +31,18 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"Sale - {self.product.name}"
+
+class Warehouse(models.Model):
+    name = models.CharField(max_length=100)
+    location = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.name
+    
+class Stock(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.product.name} - {self.warehouse.name}"

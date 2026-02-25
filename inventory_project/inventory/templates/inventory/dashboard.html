@@ -1,6 +1,7 @@
 {% load static %}
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Stocks & Sales - Lachu Auto Traders</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -12,7 +13,7 @@
         }
 
         .glass-box {
-            background: rgba(0,0,0,0.7);
+            background: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 25px;
             border-radius: 12px;
@@ -22,93 +23,120 @@
 
 <body>
 
-<!-- ✅ NAVBAR -->
-<nav class="navbar navbar-dark bg-dark navbar-expand-lg">
-    <div class="container">
-        <a class="navbar-brand fw-bold">Lachu Auto Traders</a>
+    <!-- ✅ NAVBAR -->
+    <nav class="navbar navbar-dark bg-dark navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand fw-bold">Lachu Auto Traders</a>
 
-        <div>
-            <a href="{% url 'dashboard' %}" class="btn btn-light me-2">📊 Stocks & Sales</a>
-            <a href="{% url 'cart' %}" class="btn btn-warning me-2">🛒 Cart</a>
-            <a href="{% url 'home' %}" class="btn btn-info">Home</a>
-        </div>
-    </div>
-</nav>
-
-<div class="container mt-4">
-    <div class="glass-box">
-
-        <h2>📊 Stocks & Sales Dashboard</h2>
-        <hr>
-
-        <!-- SUMMARY -->
-        <div class="row text-center mb-4">
-            <div class="col-md-4">
-                <h5>Total Revenue</h5>
-                <h3 class="text-warning">₹{{ total_revenue }}</h3>
-            </div>
-            <div class="col-md-4">
-                <h5>Total Items Sold</h5>
-                <h3 class="text-info">{{ total_items_sold }}</h3>
-            </div>
-            <div class="col-md-4">
-                <h5>Low Stock Items</h5>
-                <h3 class="text-danger">{{ low_stock_count }}</h3>
+            <div>
+                <a href="{% url 'dashboard' %}" class="btn btn-light me-2">📊 Stocks & Sales</a>
+                <a href="{% url 'cart' %}" class="btn btn-warning me-2">🛒 Cart</a>
+                <a href="{% url 'home' %}" class="btn btn-info">Home</a>
             </div>
         </div>
+    </nav>
 
-        <!-- STOCK TABLE -->
-        <h4>📦 Current Stock</h4>
-        <table class="table table-light table-bordered">
-            <tr>
-                <th>Product</th>
-                <th>Brand</th>
-                <th>Quantity</th>
-                <th>Status</th>
-            </tr>
+    <div class="container mt-4">
+        <div class="glass-box">
 
-            {% for p in products %}
-            <tr>
-                <td>{{ p.name }}</td>
-                <td>{{ p.brand }}</td>
-                <td>{{ p.quantity }}</td>
-                <td>
-                    {% if p.quantity <= p.reorder_level %}
-                        <span class="text-danger">Low Stock</span>
-                    {% else %}
-                        <span class="text-success">OK</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+            <h2>📊 Stocks & Sales Dashboard</h2>
+            <hr>
 
-        <!-- SALES TABLE -->
-        <h4 class="mt-4">💰 Sales History</h4>
-        <table class="table table-light table-bordered">
-            <tr>
-                <th>Product</th>
-                <th>Qty Sold</th>
-                <th>Total Price</th>
-                <th>Date</th>
-            </tr>
+            <!-- SUMMARY -->
+            <div class="row text-center mb-4">
+                <div class="col-md-4">
+                    <h5>Total Revenue</h5>
+                    <h3 class="text-warning">₹{{ total_revenue }}</h3>
+                </div>
+                <div class="col-md-4">
+                    <h5>Total Items Sold</h5>
+                    <h3 class="text-info">{{ total_items_sold }}</h3>
+                </div>
+                <div class="col-md-4">
+                    <h5>Low Stock Items</h5>
+                    <h3 class="text-danger">{{ low_stock_count }}</h3>
+                </div>
+            </div>
 
-            {% for s in sales %}
-            <tr>
-                <td>{{ s.product.name }}</td>
-                <td>{{ s.quantity }}</td>
-                <td>₹{{ s.total_price }}</td>
-                <td>{{ s.sold_at }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4" class="text-center">No sales yet</td>
-            </tr>
-            {% endfor %}
-        </table>
+            <!-- STOCK TABLE -->
+            <h4>📦 Current Stock</h4>
+            <table class="table table-light table-bordered">
+                <tr>
+                    <th>Product</th>
+                    <th>Brand</th>
+                    <th>Quantity</th>
+                    <th>Status</th>
+                </tr>
 
+                {% for p in products %}
+                <tr>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.brand }}</td>
+                    <td>{{ p.quantity }}</td>
+                    <td>
+                        {% if p.quantity <= p.reorder_level %} <span class="text-danger">Low Stock</span>
+                            {% else %}
+                            <span class="text-success">OK</span>
+                            {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+
+            <!-- SALES TABLE -->
+            <h4 class="mt-4">💰 Sales History</h4>
+            <table class="table table-light table-bordered">
+                <tr>
+                    <th>Product</th>
+                    <th>Qty Sold</th>
+                    <th>Total Price</th>
+                    <th>Date</th>
+                </tr>
+
+                {% for s in sales %}
+                <tr>
+                    <td>{{ s.product.name }}</td>
+                    <td>{{ s.quantity }}</td>
+                    <td>₹{{ s.total_price }}</td>
+                    <td>{{ s.sold_at }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center">No sales yet</td>
+                </tr>
+                {% endfor %}
+            </table>
+            <h4 class="mt-4">🏬 Warehouse-wise Stock</h4>
+
+            <table class="table table-light table-bordered">
+                <tr>
+                    <th>Product</th>
+                    <th>Warehouse</th>
+                    <th>Location</th>
+                    <th>Quantity</th>
+                    <th>Global Stock</th>
+                </tr>
+
+                {% for s in stocks %}
+                <tr>
+                    <td>{{ s.product.name }}</td>
+                    <td>{{ s.warehouse.name }}</td>
+                    <td>{{ s.warehouse.location }}</td>
+                    <td>{{ s.quantity }}</td>
+                    <td>
+                        <strong>{{ s.product.total_stock }}</strong>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">No warehouse stock data</td>
+                </tr>
+                {% endfor %}
+            </table>
+
+        </div>
     </div>
-</div>
 
 </body>
+
 </html>

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum, F
-from .models import Product, Sale
+from .models import Product, Sale, Stock, Warehouse
 
 
 # 🏠 HOME
@@ -80,10 +80,14 @@ def confirm_payment(request):
     return render(request, 'inventory/thankyou.html')
 
 
-# 📊 DASHBOARD (HR FEATURE ⭐)
+from django.db.models import Sum, F
+from .models import Product, Sale, Stock, Warehouse
+
+
 def dashboard(request):
     products = Product.objects.all()
     sales = Sale.objects.all().order_by('-sold_at')
+    stocks = Stock.objects.select_related('product', 'warehouse')
 
     total_revenue = Sale.objects.aggregate(
         total=Sum('total_price')
@@ -94,12 +98,13 @@ def dashboard(request):
     )['total'] or 0
 
     low_stock_count = Product.objects.filter(
-        quantity__lte=F('reorder_level')
-    ).count()
+        stock__quantity__lte=F('reorder_level')
+    ).distinct().count()
 
     context = {
         'products': products,
         'sales': sales,
+        'stocks': stocks,  # ⭐ NEW
         'total_revenue': total_revenue,
         'total_items_sold': total_items_sold,
         'low_stock_count': low_stock_count,
