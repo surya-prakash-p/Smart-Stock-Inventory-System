@@ -80,31 +80,48 @@ def confirm_payment(request):
     return render(request, 'inventory/thankyou.html')
 
 
-from django.db.models import Sum, F
-from .models import Product, Sale, Stock, Warehouse
 
 
 def dashboard(request):
     products = Product.objects.all()
     sales = Sale.objects.all().order_by('-sold_at')
+
+    # ✅ Warehouse-wise stock
     stocks = Stock.objects.select_related('product', 'warehouse')
 
+    # ✅ Global stock per product
+    product_summary = []
+    for product in products:
+        total_stock = Stock.objects.filter(product=product).aggregate(
+            total=Sum('quantity')
+        )['total'] or 0
+
+        product_summary.append({
+            'product': product,
+            'total_stock': total_stock
+        })
+
+    # ✅ Revenue
     total_revenue = Sale.objects.aggregate(
         total=Sum('total_price')
     )['total'] or 0
 
+    # ✅ Items sold
     total_items_sold = Sale.objects.aggregate(
         total=Sum('quantity')
     )['total'] or 0
 
-    low_stock_count = Product.objects.filter(
-        stock__quantity__lte=F('reorder_level')
-    ).distinct().count()
+    # ✅ LOW STOCK (based on GLOBAL stock — correct logic)
+    low_stock_count = sum(
+        1 for item in product_summary
+        if item['total_stock'] <= item['product'].reorder_level
+    )
 
     context = {
         'products': products,
         'sales': sales,
-        'stocks': stocks,  # ⭐ NEW
+        'stocks': stocks,
+        'product_summary': product_summary,  # ⭐ IMPORTANT
         'total_revenue': total_revenue,
         'total_items_sold': total_items_sold,
         'low_stock_count': low_stock_count,

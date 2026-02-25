@@ -81,10 +81,17 @@ WSGI_APPLICATION = 'inventory_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+import pymysql
+pymysql.install_as_MySQLdb()
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'smart_inventory_db',   # your DB name
+        'USER': 'root',                 # your mysql user
+        'PASSWORD': 'rootroot',    # your mysql password
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
