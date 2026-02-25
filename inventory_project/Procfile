@@ -1,1 +1,1 @@
-web: python manage.py migrate && python manage.py seed_products && python manage.py seed_warehouse_stock && gunicorn inventory_project.wsgi:application
+web: python manage.py migrate && python manage.py seed_products && python manage.py seed_warehouse_stock && gunicorn inventory_project.wsgi:applicationweb: python manage.py migrate && python manage.py seed_products && python manage.py seed_warehouse_stock && gunicorn inventory_project.wsgi:application 
