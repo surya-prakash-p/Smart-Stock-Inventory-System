@@ -24,6 +24,23 @@
 </head>
 
 <body>
+<nav class="navbar navbar-dark bg-dark navbar-expand-lg">
+    <div class="container">
+        <a class="navbar-brand fw-bold">Lachu Auto Traders</a>
+
+        <div>
+            <a href="{% url 'dashboard' %}" class="btn btn-light me-2">
+                📊 Stocks & Sales
+            </a>
+            <a href="{% url 'cart' %}" class="btn btn-warning me-2">
+                🛒 Cart
+            </a>
+            <a href="{% url 'home' %}#contact" class="btn btn-info">
+                Contact Us
+            </a>
+        </div>
+    </div>
+</nav>
 
 <div class="container mt-5">
     <div class="glass-box">
