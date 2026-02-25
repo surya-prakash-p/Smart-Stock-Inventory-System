@@ -129,15 +129,4 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# --- AUTO CREATE SUPERUSER ON RENDER ---
-import os
-from django.contrib.auth import get_user_model
 
-if os.environ.get("RENDER"):
-    User = get_user_model()
-    if not User.objects.filter(username="admin").exists():
-        User.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="Admin@12345"
-        )
