@@ -82,16 +82,13 @@ WSGI_APPLICATION = 'inventory_project.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 
-import os
 import dj_database_url
+import os
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 DATABASES = {
-    "default": dj_database_url.config(
-        default="postgresql://postgres:rootroot@localhost:5432/inventory_db",
-        conn_max_age=600
-    )
+    "default": dj_database_url.parse(DATABASE_URL)
 }
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
