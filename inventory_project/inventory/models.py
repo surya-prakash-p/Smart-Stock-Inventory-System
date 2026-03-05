@@ -1,6 +1,5 @@
 from django.db import models
-
-from django.db import models
+from django.contrib.auth.models import User
 
 class Product(models.Model):
     name = models.CharField(max_length=200)
@@ -46,3 +45,17 @@ class Stock(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.warehouse.name}"
+    
+class Order(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('shipping', 'In Shipping'),
+        ('delivered', 'Delivered'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.IntegerField()
+    price = models.FloatField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)

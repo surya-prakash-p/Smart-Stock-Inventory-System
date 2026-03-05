@@ -1,7 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum, F
-from .models import Product, Sale, Stock, Warehouse
+from .models import Product, Sale, Stock, Warehouse, Order
+from datetime import timedelta
+from django.utils import timezone
 
 
 # 🏠 HOME
@@ -51,7 +53,6 @@ def cart_view(request):
     })
 
 
-# 💳 CONFIRM PAYMENT (STOCK ↓ + SALE SAVE)
 def confirm_payment(request):
     cart = request.session.get('cart', {})
 
@@ -62,23 +63,30 @@ def confirm_payment(request):
     for pid, qty in cart.items():
         product = get_object_or_404(Product, id=pid)
 
-        # ✅ Save sale
+        # Save sale
         Sale.objects.create(
             product=product,
             quantity=qty,
             total_price=product.price * qty
         )
 
-        # ✅ Reduce stock
+        # Create order history
+        Order.objects.create(
+            user=None,
+            product=product,
+            quantity=qty,
+            price=product.price * qty,
+            status="shipping"
+        )
+
+        # Reduce stock
         product.quantity = max(product.quantity - qty, 0)
         product.save()
 
-    # ✅ Clear cart
     request.session['cart'] = {}
 
     messages.success(request, "🎉 Your order has been placed successfully!")
     return render(request, 'inventory/thankyou.html')
-
 
 
 
@@ -128,3 +136,36 @@ def dashboard(request):
     }
 
     return render(request, 'inventory/dashboard.html', context)
+
+
+# 📦 ORDER HISTORY
+def order_history(request):
+
+    orders = Order.objects.all().order_by('-created_at')
+
+    order_list = []
+
+    for order in orders:
+
+        days_passed = (timezone.now() - order.created_at).days
+
+        if days_passed >= 3:
+            status = "delivered"
+        elif days_passed >= 1:
+            status = "shipping"
+        else:
+            status = "pending"
+
+        estimated_delivery = order.created_at + timedelta(days=3)
+
+        order_list.append({
+            "product": order.product,
+            "quantity": order.quantity,
+            "created_at": order.created_at,
+            "status": status,
+            "delivery": estimated_delivery
+        })
+
+    return render(request, "inventory/order_history.html", {
+        "orders": order_list
+    })
