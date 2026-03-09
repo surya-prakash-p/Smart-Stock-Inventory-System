@@ -74,11 +74,11 @@
 
                 {% for item in product_summary %}
                 <tr>
-                    <td>{{ item.product.name }}</td>
-                    <td>{{ item.product.brand }}</td>
+                    <td>{{ item.product__name }}</td>
+                    <td>{{ item.product__brand }}</td>
                     <td><strong>{{ item.total_stock }}</strong></td>
                     <td>
-                        {% if item.total_stock <= item.product.reorder_level %}
+                        {% if item.total_stock <= item.product__reorder_level %}
                             <span class="text-danger fw-bold">Low Stock</span>
                         {% else %}
                             <span class="text-success fw-bold">OK</span>

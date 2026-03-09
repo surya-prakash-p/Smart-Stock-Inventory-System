@@ -1,19 +1,27 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum, F
-from .models import Product, Sale, Stock, Warehouse, Order
-from datetime import timedelta
+from django.core.paginator import Paginator
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from datetime import timedelta
+
+from .models import Product, Sale, Stock, Warehouse, Order
 
 
 # 🏠 HOME
 def home(request):
     query = request.GET.get('q')
 
+    products = Product.objects.all().order_by('-created_at')
+
     if query:
-        products = Product.objects.filter(name__icontains=query)
-    else:
-        products = Product.objects.all()
+        products = products.filter(name__contains=query)
+
+    # Pagination (important for large inventory)
+    paginator = Paginator(products, 12)
+    page_number = request.GET.get('page')
+    products = paginator.get_page(page_number)
 
     return render(request, 'inventory/home.html', {
         'products': products
@@ -22,23 +30,36 @@ def home(request):
 
 # 🛒 ADD TO CART
 def add_to_cart(request, id):
+
+    product = get_object_or_404(Product, id=id)
+
     cart = request.session.get('cart', {})
+
     cart[str(id)] = cart.get(str(id), 0) + 1
+
     request.session['cart'] = cart
 
-    messages.success(request, "✅ Added to cart successfully!")
+    messages.success(request, "Added to cart successfully!")
+
     return redirect('home')
 
 
 # 🛒 CART VIEW
 def cart_view(request):
+
     cart = request.session.get('cart', {})
+
     items = []
     grand_total = 0
 
-    for pid, qty in cart.items():
-        product = get_object_or_404(Product, id=pid)
+    products = Product.objects.filter(id__in=cart.keys())
+
+    for product in products:
+
+        qty = cart.get(str(product.id), 0)
+
         total = product.price * qty
+
         grand_total += total
 
         items.append({
@@ -53,15 +74,25 @@ def cart_view(request):
     })
 
 
+# 💳 CONFIRM PAYMENT
 def confirm_payment(request):
+
     cart = request.session.get('cart', {})
 
     if not cart:
         messages.warning(request, "Your cart is empty.")
         return redirect('home')
 
-    for pid, qty in cart.items():
-        product = get_object_or_404(Product, id=pid)
+    products = Product.objects.filter(id__in=cart.keys())
+
+    for product in products:
+
+        qty = cart.get(str(product.id))
+
+        # ❗ Prevent negative stock
+        if product.quantity < qty:
+            messages.error(request, f"Not enough stock for {product.name}")
+            return redirect('cart')
 
         # Save sale
         Sale.objects.create(
@@ -72,64 +103,66 @@ def confirm_payment(request):
 
         # Create order history
         Order.objects.create(
-            user=None,
+            user=request.user if request.user.is_authenticated else None,
             product=product,
             quantity=qty,
             price=product.price * qty,
             status="shipping"
         )
 
-        # Reduce stock
-        product.quantity = max(product.quantity - qty, 0)
-        product.save()
+        # Safe stock reduction
+        Product.objects.filter(id=product.id).update(
+            quantity=F('quantity') - qty
+        )
 
     request.session['cart'] = {}
 
-    messages.success(request, "🎉 Your order has been placed successfully!")
+    messages.success(request, "Your order has been placed successfully!")
+
     return render(request, 'inventory/thankyou.html')
 
 
-
+# 📊 DASHBOARD
+@login_required
 def dashboard(request):
-    products = Product.objects.all()
-    sales = Sale.objects.all().order_by('-sold_at')
 
-    # ✅ Warehouse-wise stock
+    products = Product.objects.only('id', 'name', 'quantity', 'price')
+
+    sales = Sale.objects.select_related('product').order_by('-sold_at')
+
     stocks = Stock.objects.select_related('product', 'warehouse')
 
-    # ✅ Global stock per product
-    product_summary = []
-    for product in products:
-        total_stock = Stock.objects.filter(product=product).aggregate(
-            total=Sum('quantity')
-        )['total'] or 0
+    # Global stock summary
+    product_summary = Stock.objects.values(
+    'product__id',
+    'product__name',
+    'product__brand',
+    'product__reorder_level'
+    ).annotate(
+    total_stock=Sum('quantity')
+    )
 
-        product_summary.append({
-            'product': product,
-            'total_stock': total_stock
-        })
-
-    # ✅ Revenue
+    # Revenue
     total_revenue = Sale.objects.aggregate(
         total=Sum('total_price')
     )['total'] or 0
 
-    # ✅ Items sold
+    # Items sold
     total_items_sold = Sale.objects.aggregate(
         total=Sum('quantity')
     )['total'] or 0
 
-    # ✅ LOW STOCK (based on GLOBAL stock — correct logic)
+    # Low stock count
     low_stock_count = sum(
         1 for item in product_summary
-        if item['total_stock'] <= item['product'].reorder_level
+        if item['total_stock'] <= item['product__reorder_level']
     )
 
     context = {
         'products': products,
         'sales': sales,
         'stocks': stocks,
-        'product_summary': product_summary,  # ⭐ IMPORTANT
+        'product_summary': product_summary,
         'total_revenue': total_revenue,
         'total_items_sold': total_items_sold,
         'low_stock_count': low_stock_count,
@@ -141,7 +174,7 @@ def dashboard(request):
 # 📦 ORDER HISTORY
 def order_history(request):
 
-    orders = Order.objects.all().order_by('-created_at')
+    orders = Order.objects.select_related('product').order_by('-created_at')
 
     order_list = []
 
