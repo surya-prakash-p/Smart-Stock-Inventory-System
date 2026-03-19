@@ -3,8 +3,13 @@
 <html>
 
 <head>
-    <title>Stocks & Sales - Lachu Auto Traders</title>
+    <title>Dashboard - Lachu Auto Traders</title>
+
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
@@ -13,135 +18,214 @@
         }
 
         .glass-box {
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(0, 0, 0, 0.88);
             color: white;
             padding: 25px;
             border-radius: 12px;
         }
 
+        .card-box {
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.6);
+            transition: 0.3s;
+        }
+
+        .card-box:hover {
+            transform: translateY(-5px);
+        }
+
+        .bg-revenue { background: #ffc107; }
+        .bg-sales { background: #17a2b8; }
+        .bg-stock { background: #dc3545; }
+        .bg-profit { background: #28a745; }
+
         .table {
             background: white;
+        }
+
+        .btn-filter {
+            margin-right: 10px;
+        }
+
+        .active-filter {
+            border: 2px solid white;
         }
     </style>
 </head>
 
 <body>
 
-    <!-- ✅ NAVBAR -->
-    <nav class="navbar navbar-dark bg-dark navbar-expand-lg">
-        <div class="container">
-            <a class="navbar-brand fw-bold">Lachu Auto Traders</a>
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold">Lachu Auto Traders</a>
 
-            <div>
-                <a href="{% url 'dashboard' %}" class="btn btn-light me-2">📊 Stocks & Sales</a>
-                <a href="{% url 'cart' %}" class="btn btn-warning me-2">🛒 Cart</a>
-                <a href="{% url 'home' %}" class="btn btn-info">Home</a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
-        <div class="glass-box">
-
-            <h2 class="mb-3">📊 Stocks & Sales Dashboard</h2>
-            <hr>
-
-            <!-- ✅ SUMMARY CARDS -->
-            <div class="row text-center mb-4">
-                <div class="col-md-4">
-                    <h5>Total Revenue</h5>
-                    <h3 class="text-warning">₹{{ total_revenue }}</h3>
-                </div>
-                <div class="col-md-4">
-                    <h5>Total Items Sold</h5>
-                    <h3 class="text-info">{{ total_items_sold }}</h3>
-                </div>
-                <div class="col-md-4">
-                    <h5>Low Stock Items</h5>
-                    <h3 class="text-danger">{{ low_stock_count }}</h3>
-                </div>
-            </div>
-
-            <!-- ✅ GLOBAL PRODUCT STOCK -->
-            <h4>📦 Global Product Stock</h4>
-            <table class="table table-bordered">
-                <tr>
-                    <th>Product</th>
-                    <th>Brand</th>
-                    <th>Total Stock</th>
-                    <th>Status</th>
-                </tr>
-
-                {% for item in product_summary %}
-                <tr>
-                    <td>{{ item.product__name }}</td>
-                    <td>{{ item.product__brand }}</td>
-                    <td><strong>{{ item.total_stock }}</strong></td>
-                    <td>
-                        {% if item.total_stock <= item.product__reorder_level %}
-                            <span class="text-danger fw-bold">Low Stock</span>
-                        {% else %}
-                            <span class="text-success fw-bold">OK</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center">No products available</td>
-                </tr>
-                {% endfor %}
-            </table>
-
-            <!-- ✅ WAREHOUSE-WISE STOCK -->
-            <h4 class="mt-4">🏬 Warehouse-wise Stock</h4>
-            <table class="table table-bordered">
-                <tr>
-                    <th>Product</th>
-                    <th>Warehouse</th>
-                    <th>Location</th>
-                    <th>Quantity</th>
-                </tr>
-
-                {% for s in stocks %}
-                <tr>
-                    <td>{{ s.product.name }}</td>
-                    <td>{{ s.warehouse.name }}</td>
-                    <td>{{ s.warehouse.location }}</td>
-                    <td><strong>{{ s.quantity }}</strong></td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center">No warehouse stock data</td>
-                </tr>
-                {% endfor %}
-            </table>
-
-            <!-- ✅ SALES HISTORY -->
-            <h4 class="mt-4">💰 Sales History</h4>
-            <table class="table table-bordered">
-                <tr>
-                    <th>Product</th>
-                    <th>Qty Sold</th>
-                    <th>Total Price</th>
-                    <th>Date</th>
-                </tr>
-
-                {% for s in sales %}
-                <tr>
-                    <td>{{ s.product.name }}</td>
-                    <td>{{ s.quantity }}</td>
-                    <td>₹{{ s.total_price }}</td>
-                    <td>{{ s.sold_at }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center">No sales yet</td>
-                </tr>
-                {% endfor %}
-            </table>
-
+        <div>
+            <a href="{% url 'dashboard' %}" class="btn btn-light me-2">📊 Dashboard</a>
+            <a href="{% url 'cart' %}" class="btn btn-warning me-2">🛒 Cart</a>
+            <a href="{% url 'home' %}" class="btn btn-info">Home</a>
         </div>
     </div>
+</nav>
+
+<div class="container mt-4">
+<div class="glass-box">
+
+<h2 class="mb-4">📊 Smart Inventory Dashboard</h2>
+
+<!-- 📅 FILTER -->
+<div class="mb-3">
+    <a href="?filter=7days"
+       class="btn btn-primary btn-filter {% if request.GET.filter == '7days' %}active-filter{% endif %}">
+       Last 7 Days
+    </a>
+
+    <a href="?filter=30days"
+       class="btn btn-secondary btn-filter {% if request.GET.filter == '30days' %}active-filter{% endif %}">
+       Last 30 Days
+    </a>
+</div>
+
+<!-- 🔥 SUMMARY CARDS -->
+<div class="row text-center mb-4">
+
+    <div class="col-md-3">
+        <div class="card-box bg-revenue">
+            <h5>Revenue</h5>
+            <h2>₹{{ total_revenue|default:0 }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card-box bg-sales">
+            <h5>Items Sold</h5>
+            <h2>{{ total_items_sold|default:0 }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card-box bg-stock">
+            <h5>Low Stock</h5>
+            <h2>{{ low_stock_products|length }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card-box bg-profit">
+            <h5>Profit</h5>
+            <h2>₹{{ total_profit|default:0 }}</h2>
+        </div>
+    </div>
+
+</div>
+
+<!-- 🔔 LOW STOCK -->
+<h4>⚠ Low Stock Alerts</h4>
+<ul class="list-group mb-4">
+{% for product in low_stock_products %}
+    <li class="list-group-item text-danger">
+        {{ product.name }} — {{ product.quantity }} left
+    </li>
+{% empty %}
+    <li class="list-group-item text-success">All good ✅</li>
+{% endfor %}
+</ul>
+
+<!-- 🏆 TOP PRODUCTS -->
+<h4>🏆 Top Selling Products</h4>
+<ul class="list-group mb-4">
+{% for item in top_products %}
+    <li class="list-group-item">
+        {{ item.product__name }} ({{ item.total_sold }} sold)
+    </li>
+{% empty %}
+    <li class="list-group-item text-muted">No sales data</li>
+{% endfor %}
+</ul>
+
+<!-- 📈 DAILY GRAPH -->
+<h4>📈 Daily Revenue</h4>
+<canvas id="dailyChart" class="mb-5"></canvas>
+
+<!-- 📊 MONTHLY GRAPH -->
+<h4>📊 Monthly Revenue</h4>
+<canvas id="monthlyChart" class="mb-5"></canvas>
+
+<!-- 📦 STOCK -->
+<h4>📦 Product Stock</h4>
+<table class="table table-bordered">
+<tr>
+    <th>Product</th>
+    <th>Quantity</th>
+</tr>
+
+{% for p in products %}
+<tr>
+    <td>{{ p.name }}</td>
+    <td>{{ p.quantity }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<!-- 💰 SALES -->
+<h4 class="mt-4">💰 Sales History</h4>
+<table class="table table-bordered">
+<tr>
+    <th>Product</th>
+    <th>Qty</th>
+    <th>Total</th>
+    <th>Date</th>
+</tr>
+
+{% for s in sales %}
+<tr>
+    <td>{{ s.product.name }}</td>
+    <td>{{ s.quantity }}</td>
+    <td>₹{{ s.total_price }}</td>
+    <td>{{ s.sold_at }}</td>
+</tr>
+{% endfor %}
+</table>
+
+</div>
+</div>
+
+<!-- 🔥 CHARTS SAFE -->
+<script>
+const dailyData = {{ daily_sales|default:"[]"|safe }};
+const monthlyData = {{ monthly_sales|default:"[]"|safe }};
+
+// DAILY
+if(dailyData.length > 0){
+    new Chart(document.getElementById('dailyChart'), {
+        type: 'line',
+        data: {
+            labels: dailyData.map(d => d.day),
+            datasets: [{
+                label: 'Daily Revenue',
+                data: dailyData.map(d => d.total),
+                tension: 0.4
+            }]
+        }
+    });
+}
+
+// MONTHLY
+if(monthlyData.length > 0){
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'bar',
+        data: {
+            labels: monthlyData.map(m => m.month),
+            datasets: [{
+                label: 'Monthly Revenue',
+                data: monthlyData.map(m => m.total),
+            }]
+        }
+    });
+}
+</script>
 
 </body>
 </html>

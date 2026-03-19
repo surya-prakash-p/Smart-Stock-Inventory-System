@@ -1,12 +1,22 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Sum, F
+from django.db.models.functions import TruncDay, TruncMonth
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from datetime import timedelta
+from decimal import Decimal
+import json
 
-from .models import Product, Sale, Stock, Warehouse, Order
+# 🔥 Tally Integration
+from .tally_integration import (
+    create_sales_entry,
+    create_stock_item,
+    create_customer
+)
+
+from .models import Product, Sale, Order
 
 
 # 🏠 HOME
@@ -16,9 +26,8 @@ def home(request):
     products = Product.objects.all().order_by('-created_at')
 
     if query:
-        products = products.filter(name__contains=query)
+        products = products.filter(name__icontains=query)
 
-    # Pagination (important for large inventory)
     paginator = Paginator(products, 12)
     page_number = request.GET.get('page')
     products = paginator.get_page(page_number)
@@ -30,36 +39,28 @@ def home(request):
 
 # 🛒 ADD TO CART
 def add_to_cart(request, id):
-
     product = get_object_or_404(Product, id=id)
 
     cart = request.session.get('cart', {})
-
     cart[str(id)] = cart.get(str(id), 0) + 1
-
     request.session['cart'] = cart
 
     messages.success(request, "Added to cart successfully!")
-
     return redirect('home')
 
 
 # 🛒 CART VIEW
 def cart_view(request):
-
     cart = request.session.get('cart', {})
 
     items = []
-    grand_total = 0
+    grand_total = Decimal('0')
 
     products = Product.objects.filter(id__in=cart.keys())
 
     for product in products:
-
         qty = cart.get(str(product.id), 0)
-
         total = product.price * qty
-
         grand_total += total
 
         items.append({
@@ -85,14 +86,36 @@ def confirm_payment(request):
 
     products = Product.objects.filter(id__in=cart.keys())
 
-    for product in products:
+    customer_name = (
+        request.user.username
+        if request.user.is_authenticated
+        else "Walk-in Customer"
+    )
 
+    try:
+        create_customer(customer_name)
+    except Exception as e:
+        print("Customer Error:", e)
+
+    for product in products:
         qty = cart.get(str(product.id))
 
-        # ❗ Prevent negative stock
         if product.quantity < qty:
             messages.error(request, f"Not enough stock for {product.name}")
             return redirect('cart')
+
+        try:
+            create_stock_item(product.name, product.quantity)
+
+            create_sales_entry(
+                product.name,
+                qty,
+                product.price,
+                customer_name
+            )
+
+        except Exception as e:
+            print("Tally Error:", e)
 
         # Save sale
         Sale.objects.create(
@@ -101,7 +124,7 @@ def confirm_payment(request):
             total_price=product.price * qty
         )
 
-        # Create order history
+        # Save order
         Order.objects.create(
             user=request.user if request.user.is_authenticated else None,
             product=product,
@@ -110,7 +133,7 @@ def confirm_payment(request):
             status="shipping"
         )
 
-        # Safe stock reduction
+        # Reduce stock
         Product.objects.filter(id=product.id).update(
             quantity=F('quantity') - qty
         )
@@ -118,57 +141,109 @@ def confirm_payment(request):
     request.session['cart'] = {}
 
     messages.success(request, "Your order has been placed successfully!")
-
     return render(request, 'inventory/thankyou.html')
 
 
-# 📊 DASHBOARD
+# 📊 DASHBOARD (🔥 FINAL PRO VERSION)
 @login_required
 def dashboard(request):
 
-    products = Product.objects.only('id', 'name', 'quantity', 'price')
+    filter_type = request.GET.get('filter')
+    sales = Sale.objects.all()
 
-    sales = Sale.objects.select_related('product').order_by('-sold_at')
+    # 📅 FILTER
+    if filter_type == '7days':
+        sales = sales.filter(sold_at__gte=timezone.now() - timedelta(days=7))
+    elif filter_type == '30days':
+        sales = sales.filter(sold_at__gte=timezone.now() - timedelta(days=30))
 
-    stocks = Stock.objects.select_related('product', 'warehouse')
+    products = Product.objects.all()
 
-    # Global stock summary
-    product_summary = Stock.objects.values(
-    'product__id',
-    'product__name',
-    'product__brand',
-    'product__reorder_level'
-    ).annotate(
-    total_stock=Sum('quantity')
+    # 💰 Revenue
+    total_revenue = sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0')
+
+    # 📦 Items sold
+    total_items_sold = sales.aggregate(total=Sum('quantity'))['total'] or 0
+
+    # 🔔 Low stock
+    low_stock_products = Product.objects.filter(quantity__lte=F('reorder_level'))
+
+    # 🏆 Top products
+    top_products = (
+        sales.values('product__name')
+        .annotate(total_sold=Sum('quantity'))
+        .order_by('-total_sold')[:5]
     )
 
-    # Revenue
-    total_revenue = Sale.objects.aggregate(
-        total=Sum('total_price')
-    )['total'] or 0
-
-    # Items sold
-    total_items_sold = Sale.objects.aggregate(
-        total=Sum('quantity')
-    )['total'] or 0
-
-    # Low stock count
-    low_stock_count = sum(
-        1 for item in product_summary
-        if item['total_stock'] <= item['product__reorder_level']
+    # 📈 Daily sales
+    daily_sales_qs = (
+        sales.annotate(day=TruncDay('sold_at'))
+        .values('day')
+        .annotate(total=Sum('total_price'))
+        .order_by('day')
     )
+
+    daily_sales = [
+        {"day": str(d["day"].date()), "total": float(d["total"])}
+        for d in daily_sales_qs if d["total"]
+    ]
+
+    # 📊 Monthly sales
+    monthly_sales_qs = (
+        sales.annotate(month=TruncMonth('sold_at'))
+        .values('month')
+        .annotate(total=Sum('total_price'))
+        .order_by('month')
+    )
+
+    monthly_sales = [
+        {"month": str(m["month"].date()), "total": float(m["total"])}
+        for m in monthly_sales_qs if m["total"]
+    ]
+
+    # 💰 PROFIT (FIXED ✅)
+    total_cost = total_revenue * Decimal('0.7')
+    total_profit = total_revenue - total_cost
 
     context = {
         'products': products,
         'sales': sales,
-        'stocks': stocks,
-        'product_summary': product_summary,
         'total_revenue': total_revenue,
         'total_items_sold': total_items_sold,
-        'low_stock_count': low_stock_count,
+        'low_stock_products': low_stock_products,
+        'top_products': top_products,
+        'daily_sales': json.dumps(daily_sales),
+        'monthly_sales': json.dumps(monthly_sales),
+        'total_profit': total_profit,
     }
 
     return render(request, 'inventory/dashboard.html', context)
+
+
+# 🔄 REFUND
+def refund_order(request, id):
+
+    order = get_object_or_404(Order, id=id)
+
+    if getattr(order, 'is_refunded', False):
+        messages.warning(request, "Already refunded!")
+        return redirect('order_history')
+
+    if order.status in ['pending', 'shipping']:
+        order.status = 'cancelled'
+    elif order.status == 'delivered':
+        order.status = 'returned'
+
+    order.is_refunded = True
+    order.save()
+
+    # Restore stock
+    Product.objects.filter(id=order.product.id).update(
+        quantity=F('quantity') + order.quantity
+    )
+
+    messages.success(request, "Refund processed successfully!")
+    return redirect('order_history')
 
 
 # 📦 ORDER HISTORY
@@ -192,11 +267,13 @@ def order_history(request):
         estimated_delivery = order.created_at + timedelta(days=3)
 
         order_list.append({
+            "id": order.id,
             "product": order.product,
             "quantity": order.quantity,
             "created_at": order.created_at,
             "status": status,
-            "delivery": estimated_delivery
+            "delivery": estimated_delivery,
+            "is_refunded": getattr(order, 'is_refunded', False)
         })
 
     return render(request, "inventory/order_history.html", {

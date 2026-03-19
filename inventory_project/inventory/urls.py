@@ -8,5 +8,6 @@ urlpatterns = [
     path('confirm/', views.confirm_payment, name='confirm'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('orders/', views.order_history, name='order_history'),
+    path('refund/<int:id>/', views.refund_order, name='refund'),
    
 ]

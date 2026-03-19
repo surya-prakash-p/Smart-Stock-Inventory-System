@@ -1,20 +1,13 @@
 {% load static %}
-
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
 <meta charset="UTF-8">
 <title>Lachu Auto Traders</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Bootstrap CSS -->
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<style>
 
 <style>
 body{
@@ -22,14 +15,12 @@ body{
     background-size: cover;
 }
 
-/* glass background */
 .glass-box{
     background: rgba(0,0,0,0.75);
     padding:30px;
     border-radius:12px;
 }
 
-/* product card */
 .product-card{
     background:white;
     border-radius:10px;
@@ -37,132 +28,82 @@ body{
     text-align:center;
     box-shadow:0 4px 10px rgba(0,0,0,0.2);
     transition:0.3s;
+    cursor:pointer;
 }
 
 .product-card:hover{
     transform:scale(1.05);
 }
-
-/* price */
-.price{
-    color:#28a745;
-    font-weight:bold;
-}
-
-/* pagination */
-.pagination-btn{
-    background:white;
-    color:black;
-    padding:8px 16px;
-    border-radius:6px;
-    text-decoration:none;
-    margin:5px;
-}
-
-
-.product-card:hover{
-transform:translateY(-5px);
-box-shadow:0 10px 25px rgba(0,0,0,0.2);
-}
-
-/* Responsive tweaks */
-@media(max-width:768px){
-
-.navbar-brand{
-font-size:18px;
-}
-
-footer{
-font-size:14px;
-}
-
-}
-
 </style>
 
 </head>
 
 <body>
 
-<!-- NAVBAR -->
+<!-- 🔥 TOP SUCCESS MESSAGE -->
+{% if messages %}
+<div id="topAlert" style="
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 350px;
+">
+    {% for message in messages %}
+    <div class="alert alert-success text-center shadow rounded-pill">
+        ✅ {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 
+<!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
 <div class="container">
 
-<a class="navbar-brand fw-bold" href="#">Lachu Auto Traders</a>
+<a class="navbar-brand fw-bold">Lachu Auto Traders</a>
 
-<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
-<span class="navbar-toggler-icon"></span>
-</button>
-
-<div class="collapse navbar-collapse" id="navbarMenu">
-
-<div class="ms-auto d-flex flex-lg-row flex-column gap-2 mt-3 mt-lg-0">
-
-<a href="{% url 'dashboard' %}" class="btn btn-light">
-📊 Stocks & Sales
-</a>
-
-<a href="{% url 'cart' %}" class="btn btn-warning">
-🛒 Cart
-</a>
-
-<a href="#contact" class="btn btn-info">
-📞 Contact Us
-
-<a href="{% url 'order_history' %}" class="btn btn-info">
-📦 Order History</a>
-</a>
-
+<div class="ms-auto d-flex gap-2">
+<a href="{% url 'dashboard' %}" class="btn btn-light">📊 Dashboard</a>
+<a href="{% url 'cart' %}" class="btn btn-warning">🛒 Cart</a>
+<a href="{% url 'order_history' %}" class="btn btn-info">📦 Orders</a>
 </div>
 
-</div>
 </div>
 </nav>
 
 <div class="container mt-4">
 
-<!-- SUCCESS MESSAGE -->
-
-{% if messages %}
-{% for message in messages %}
-
-<div class="alert alert-success alert-dismissible fade show">
-{{ message }}
-<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-
-{% endfor %}
-{% endif %}
-
 <div class="glass-box shadow">
 
-<!-- SEARCH BAR -->
-
+<!-- SEARCH -->
 <div class="mb-4 text-center">
 <form method="GET">
-<h3 style="color: aliceblue;">🔎Looking for a Bike Part? </h3>
+<h3 style="color: aliceblue;">🔎 Looking for a Bike Part?</h3>
+
 <div class="input-group w-50 mx-auto">
-    
-
-<input type="text" name="q" class="form-control"
-placeholder="Search bike parts...">
-
+<input type="text" name="q" class="form-control" placeholder="Search bike parts...">
 <button class="btn btn-warning">Search</button>
-
 </div>
+
 </form>
 </div>
 
 <!-- PRODUCTS -->
-
 <div class="row g-4">
 
 {% for p in products %}
+<div class="col-xl-3 col-lg-4 col-md-6">
 
-<div class="col-xl-3 col-lg-4 col-md-6 col-12">
-
-<div class="card product-card h-100 shadow-sm">
+<div class="card product-card h-100 shadow-sm"
+onclick="openProduct(
+'{{ p.id }}',
+'{{ p.name }}',
+'{{ p.brand }}',
+'{{ p.price }}',
+'{{ p.description|escapejs }}'
+)">
 
 <div class="card-body text-center">
 
@@ -173,70 +114,96 @@ placeholder="Search bike parts...">
 </span>
 
 <p class="small mb-1">Brand: {{ p.brand }}</p>
-
 <p class="small mb-2">Bike: {{ p.bike_model }}</p>
 
 <h5 class="text-success fw-bold">₹{{ p.price }}</h5>
 
 {% if p.quantity <= p.reorder_level %}
-
-<span class="text-danger small d-block mb-2">
-⚠ Low Stock
-</span>
-
+<span class="text-danger small d-block mb-2">⚠ Low Stock</span>
 {% endif %}
 
-<a href="{% url 'add_to_cart' p.id %}" class="btn btn-primary w-100">
-Add to Cart
-</a>
+<button class="btn btn-primary w-100">
+View Details
+</button>
 
 </div>
-
 </div>
-
 </div>
-
-{% empty %}
-
-<p class="text-center">No products found.</p>
-
 {% endfor %}
 
 </div>
-
+</div>
 </div>
 
+<!-- 🔥 PRODUCT MODAL -->
+<div class="modal fade" id="productModal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 id="modalTitle"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body text-center">
+        <p><b>Brand:</b> <span id="modalBrand"></span></p>
+        <p><b>Price:</b> ₹<span id="modalPrice"></span></p>
+        <p><b>Description:</b> <span id="modalDesc"></span></p>
+
+        <a id="modalAddCart" class="btn btn-success mt-3">
+            🛒 Add to Cart
+        </a>
+      </div>
+
+    </div>
+  </div>
 </div>
+
+<!-- PAGINATION -->
 <div class="text-center mt-4">
+{% if products.has_previous %}
+<a href="?page={{ products.previous_page_number }}" class="btn btn-dark">Previous</a>
+{% endif %}
 
-    {% if products.has_previous %}
-        <a href="?page={{ products.previous_page_number }}" class="btn btn-dark">Previous</a>
-    {% endif %}
+<span class="mx-3 text-white">Page {{ products.number }} of {{ products.paginator.num_pages }}</span>
 
-    <span class="mx-3">Page {{ products.number }} of {{ products.paginator.num_pages }}</span>
-
-    {% if products.has_next %}
-        <a href="?page={{ products.next_page_number }}" class="btn btn-dark">Next</a>
-    {% endif %}
-
+{% if products.has_next %}
+<a href="?page={{ products.next_page_number }}" class="btn btn-dark">Next</a>
+{% endif %}
 </div>
 
 <!-- FOOTER -->
-
-<footer id="contact" class="bg-dark text-white text-center p-4 mt-5">
-
+<footer class="bg-dark text-white text-center p-4 mt-5">
 <h5>Contact Us</h5>
-
 <p>Instagram | Twitter | Facebook</p>
-
 <p>© 2026 Lachu Auto Traders</p>
-
 </footer>
 
-<!-- Bootstrap JS -->
-
+<!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+<script>
+function openProduct(id, name, brand, price, desc) {
+
+    document.getElementById("modalTitle").innerText = name;
+    document.getElementById("modalBrand").innerText = brand;
+    document.getElementById("modalPrice").innerText = price;
+    document.getElementById("modalDesc").innerText = desc;
+
+    document.getElementById("modalAddCart").href = "/add-to-cart/" + id + "/";
+
+    var modal = new bootstrap.Modal(document.getElementById('productModal'));
+    modal.show();
+}
+
+// 🔥 AUTO HIDE ALERT
+setTimeout(() => {
+    let alert = document.getElementById("topAlert");
+    if(alert){
+        alert.style.display = "none";
+    }
+}, 2000);
+</script>
 
 </body>
 </html>
