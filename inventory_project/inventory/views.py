@@ -92,6 +92,7 @@ def confirm_payment(request):
         else "Walk-in Customer"
     )
 
+    # ✅ Safe customer creation
     try:
         create_customer(customer_name)
     except Exception as e:
@@ -104,6 +105,7 @@ def confirm_payment(request):
             messages.error(request, f"Not enough stock for {product.name}")
             return redirect('cart')
 
+        # ✅ SAFE TALLY CALLS
         try:
             create_stock_item(product.name, product.quantity)
 
@@ -117,14 +119,14 @@ def confirm_payment(request):
         except Exception as e:
             print("Tally Error:", e)
 
-        # Save sale
+        # ✅ Save sale (this must ALWAYS run)
         Sale.objects.create(
             product=product,
             quantity=qty,
             total_price=product.price * qty
         )
 
-        # Save order
+        # ✅ Save order
         Order.objects.create(
             user=request.user if request.user.is_authenticated else None,
             product=product,
@@ -133,7 +135,7 @@ def confirm_payment(request):
             status="shipping"
         )
 
-        # Reduce stock
+        # ✅ Reduce stock safely
         Product.objects.filter(id=product.id).update(
             quantity=F('quantity') - qty
         )
@@ -144,14 +146,13 @@ def confirm_payment(request):
     return render(request, 'inventory/thankyou.html')
 
 
-# 📊 DASHBOARD (🔥 FINAL PRO VERSION)
+# 📊 DASHBOARD
 @login_required
 def dashboard(request):
 
     filter_type = request.GET.get('filter')
     sales = Sale.objects.all()
 
-    # 📅 FILTER
     if filter_type == '7days':
         sales = sales.filter(sold_at__gte=timezone.now() - timedelta(days=7))
     elif filter_type == '30days':
@@ -159,23 +160,17 @@ def dashboard(request):
 
     products = Product.objects.all()
 
-    # 💰 Revenue
     total_revenue = sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0')
-
-    # 📦 Items sold
     total_items_sold = sales.aggregate(total=Sum('quantity'))['total'] or 0
 
-    # 🔔 Low stock
     low_stock_products = Product.objects.filter(quantity__lte=F('reorder_level'))
 
-    # 🏆 Top products
     top_products = (
         sales.values('product__name')
         .annotate(total_sold=Sum('quantity'))
         .order_by('-total_sold')[:5]
     )
 
-    # 📈 Daily sales
     daily_sales_qs = (
         sales.annotate(day=TruncDay('sold_at'))
         .values('day')
@@ -188,7 +183,6 @@ def dashboard(request):
         for d in daily_sales_qs if d["total"]
     ]
 
-    # 📊 Monthly sales
     monthly_sales_qs = (
         sales.annotate(month=TruncMonth('sold_at'))
         .values('month')
@@ -201,7 +195,6 @@ def dashboard(request):
         for m in monthly_sales_qs if m["total"]
     ]
 
-    # 💰 PROFIT (FIXED ✅)
     total_cost = total_revenue * Decimal('0.7')
     total_profit = total_revenue - total_cost
 
@@ -237,7 +230,6 @@ def refund_order(request, id):
     order.is_refunded = True
     order.save()
 
-    # Restore stock
     Product.objects.filter(id=order.product.id).update(
         quantity=F('quantity') + order.quantity
     )
