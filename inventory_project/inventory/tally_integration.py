@@ -170,20 +170,16 @@ def get_stock_summary():
  <HEADER>
   <TALLYREQUEST>Export Data</TALLYREQUEST>
  </HEADER>
-
  <BODY>
-  <DESC>
-   <STATICVARIABLES>
-    <SVCURRENTCOMPANY>{COMPANY_NAME}</SVCURRENTCOMPANY>
-   </STATICVARIABLES>
-  </DESC>
-
   <EXPORTDATA>
    <REQUESTDESC>
     <REPORTNAME>Stock Summary</REPORTNAME>
+    <STATICVARIABLES>
+     <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+     <SVCURRENTCOMPANY>{COMPANY_NAME}</SVCURRENTCOMPANY>
+    </STATICVARIABLES>
    </REQUESTDESC>
   </EXPORTDATA>
-
  </BODY>
 </ENVELOPE>
 """
@@ -194,13 +190,24 @@ def get_stock_summary():
 # 🔍 PARSE STOCK
 # =========================
 def parse_stock_summary(xml_data):
-    root = ET.fromstring(xml_data)
-    items = []
+    try:
+        root = ET.fromstring(xml_data)
+        items = []
 
-    for item in root.findall(".//STOCKITEM"):
-        items.append({
-            "name": item.findtext("NAME"),
-            "closing_balance": item.findtext("CLOSINGBALANCE"),
-        })
+        elements = list(root)
+        for i in range(len(elements)):
+            if elements[i].tag == "DSPACCNAME":
+                name = elements[i].findtext("DSPDISPNAME")
+                # Tally exports the quantity in the next sibling tag
+                if i + 1 < len(elements) and elements[i+1].tag == "DSPSTKINFO":
+                    qty = elements[i+1].find(".//DSPCLQTY")
+                    closing_balance = qty.text if qty is not None else "0 Nos"
+                    items.append({
+                        "name": name,
+                        "closing_balance": closing_balance,
+                    })
 
-    return items
+        return items
+    except Exception as e:
+        print("Tally Parse Error:", e)
+        return []
