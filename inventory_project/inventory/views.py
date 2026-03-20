@@ -146,8 +146,7 @@ def confirm_payment(request):
     return render(request, 'inventory/thankyou.html')
 
 
-# 📊 DASHBOARD
-@login_required
+
 def dashboard(request):
 
     filter_type = request.GET.get('filter')
